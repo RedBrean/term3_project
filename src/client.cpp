@@ -7,9 +7,9 @@ int main() {
     try {
         boost::asio::io_context io_context;
 
-        // Устанавливаем соединение с сервером (на localhost, порт 12345)
+        // Устанавливаем соединение с сервером по глобальному IP и порту 12345
         tcp::resolver resolver(io_context);
-        auto endpoints = resolver.resolve("127.0.0.1", "12345");  // Замените на IP сервера, если необходимо
+        auto endpoints = resolver.resolve("YOUR_GLOBAL_IP", "12345");  // Замените на ваш глобальный IP
         tcp::socket socket(io_context);
         boost::asio::connect(socket, endpoints);
 
