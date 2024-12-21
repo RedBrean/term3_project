@@ -9,12 +9,12 @@ int main() {
 
         // Устанавливаем соединение с сервером
         tcp::resolver resolver(io_context);
-        auto endpoints = resolver.resolve("94.131.15.248", "12345"); // Замените "127.0.0.1" на IP сервера
+        auto endpoints = resolver.resolve("93.175.11.195", "12345"); // Замените "127.0.0.1" на IP сервера
         tcp::socket socket(io_context);
         boost::asio::connect(socket, endpoints);
 
         // Отправляем сообщение "Привет мир"
-        const std::string message = "Привет мир";
+        const std::string message = "Иди нахуй";
         boost::asio::write(socket, boost::asio::buffer(message));
 
         std::cout << "Сообщение отправлено: " << message << std::endl;

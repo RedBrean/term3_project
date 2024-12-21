@@ -9,7 +9,10 @@ int main() {
 
         // Создаём TCP-акцептор для прослушивания входящих соединений
         tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), 12345));
-        std::cout << "Сервер запущен и слушает порт 12345..." << std::endl;
+
+        // Получаем и выводим локальный IP и порт
+        tcp::endpoint endpoint = acceptor.local_endpoint();
+        std::cout << "Сервер слушает на: " << endpoint.address() << ":" << endpoint.port() << std::endl;
 
         // Принимаем соединение
         tcp::socket socket(io_context);
