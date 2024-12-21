@@ -1,30 +1,34 @@
 #include <boost/asio.hpp>
 #include <iostream>
+#include <string>
 
 using boost::asio::ip::tcp;
 
 int main() {
-    try {
-        boost::asio::io_context io_context;
+    boost::asio::io_context io_context;
 
-        // Создаём TCP-акцептор для прослушивания входящих соединений на порту 12345
-        tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), 12345));
+    // Создаем endpoint для сервера, который будет слушать на порту 12345
+    tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), 12345));
 
-        // Получаем и выводим локальный IP и порт
-        tcp::endpoint endpoint = acceptor.local_endpoint();
-        std::cout << "Сервер слушает на: " << endpoint.address() << ":" << endpoint.port() << std::endl;
+    std::cout << "Server listening on port 12345..." << std::endl;
 
-        // Принимаем соединение
-        tcp::socket socket(io_context);
-        acceptor.accept(socket);
+    // Ожидаем подключения клиента
+    tcp::socket socket(io_context);
+    acceptor.accept(socket);
 
-        // Читаем сообщение от клиента
-        char data[1024];
-        size_t length = socket.read_some(boost::asio::buffer(data));
-        std::cout << "Получено сообщение: " << std::string(data, length) << std::endl;
+    std::cout << "Client connected!" << std::endl;
 
-    } catch (std::exception& e) {
-        std::cerr << "Ошибка: " << e.what() << std::endl;
+    // Буфер для приема данных
+    char data[512];
+    boost::system::error_code error;
+
+    // Чтение данных от клиента
+    size_t length = socket.read_some(boost::asio::buffer(data), error);
+
+    if (error) {
+        std::cout << "Error reading data: " << error.message() << std::endl;
+    } else {
+        std::cout << "Received message: " << std::string(data, length) << std::endl;
     }
 
     return 0;
