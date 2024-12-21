@@ -9,7 +9,7 @@ int main() {
 
         // Устанавливаем соединение с сервером по глобальному IP и порту 12345
         tcp::resolver resolver(io_context);
-        auto endpoints = resolver.resolve("YOUR_GLOBAL_IP", "12345");  // Замените на ваш глобальный IP
+        auto endpoints = resolver.resolve("93.175.11.195", "12345");  // Замените на ваш глобальный IP
         tcp::socket socket(io_context);
         boost::asio::connect(socket, endpoints);
 
