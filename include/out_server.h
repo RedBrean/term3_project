@@ -1,9 +1,12 @@
 #pragma once
 
 #include <message.h>
+#include <fstream>
 
-class Out_Server
-{
+
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
+
 void read_settings()
 {
     std::ifstream file("../settings.json");
@@ -13,6 +16,9 @@ void read_settings()
     SERVER_ADDRESS = settings["server_address"];
     SERVER_PORT = settings["server_port"];
 }
+class Out_Server
+{
+
 
 using boost::asio::ip::tcp;
 

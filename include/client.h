@@ -7,11 +7,8 @@
 
 class Client
 {
-    
 
 
 
 
-
-
-};
+}; 
