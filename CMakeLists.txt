@@ -18,7 +18,7 @@ include_directories(src)
 
 # Добавляем библиотеку myLib
 add_library(myLib STATIC include/server_client.h)  # Объединяем общую логику в shared.cpp
-set_target_properties(myLib PROPERTIES LINKER_LANGUAGE CXX)
+
 target_link_libraries(myLib ${Boost_LIBRARIES})
 
 # Добавляем исполняемый файл DIA
