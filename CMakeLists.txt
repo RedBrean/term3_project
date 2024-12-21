@@ -27,3 +27,6 @@ target_link_libraries(SERVER ${Boost_LIBRARIES})  # Boost нужен серве�
 # Добавляем исполняемый файл CLIENT
 add_executable(CLIENT src/client.cpp)
 target_link_libraries(CLIENT ${Boost_LIBRARIES})  # Boost нужен клиенту напрямую
+
+set_target_properties(SERVER PROPERTIES OUTPUT_NAME "SERVER.exe")
+set_target_properties(CLIENT PROPERTIES OUTPUT_NAME "CLIENT.exe")
