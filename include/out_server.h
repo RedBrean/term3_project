@@ -1,1 +1,6 @@
-#
+class Out_Server
+{
+
+
+    
+}
