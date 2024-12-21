@@ -7,6 +7,12 @@
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
+class Out_Server
+{
+    
+    const std::string server_ip;
+     unsigned short server_port;
+
 void read_settings()
 {
     std::ifstream file("../settings.json");
@@ -22,13 +28,9 @@ class Out_Server
 
 using boost::asio::ip::tcp;
 
-void connect_to_server(const std::string& server_ip, unsigned short server_port) {
+void connect_to_server(const std::string& server_ip, unsigned short server_port,boost::asio::io_context io_context) {
     try {
         std::cout << "[INFO] Начало установки соединения с сервером " << server_ip << ":" << server_port << std::endl;
-
-        // 1. Создаём io_context
-        boost::asio::io_context io_context;
-        std::cout << "[INFO] Контекст IO создан." << std::endl;
 
         // 2. Создаём сокет
         tcp::socket socket(io_context);
