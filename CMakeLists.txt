@@ -16,10 +16,9 @@ include_directories(${Boost_INCLUDE_DIRS})
 include_directories(include)
 include_directories(src)
 
-
 # Добавляем исполняемый файл DIA
 add_executable(DIA src/main.cpp)
-target_link_libraries(DIA myLib ${Boost_LIBRARIES})
+target_link_libraries(DIA ${Boost_LIBRARIES})
 
 # Добавляем исполняемый файл SERVER
 add_executable(SERVER src/server.cpp)
