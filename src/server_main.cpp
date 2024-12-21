@@ -17,8 +17,11 @@ using boost::asio::ip::tcp;
 
 
 int main() {
-    Server this_server(12345);
 
+    boost::asio::io_context io_context;
+    Server this_server(io_context, 12345);
+    this_server.run();
+    
 
     return 0;
 }

@@ -1,82 +1,143 @@
 #pragma once
 
-#include <boost/asio.hpp>
 #include <iostream>
-#include <string>
-#include <out_client.h>
 #include <boost/asio.hpp>
 #include <vector>
 #include <string>
-#include <iostream>
-#include <memory>
-#include "out_client.h"  // Включаем ваш класс Out_Client
+#include <algorithm>  // Для std::remove_if
+#include <message.h>  // Ваш заголовочный файл, содержащий определение Message
+
+#include <out_client.h>
 
 using boost::asio::ip::tcp;
 
 class Server {
 private:
-    boost::asio::io_context io_context_;
-    tcp::acceptor acceptor_;
-    std::vector<std::shared_ptr<Out_Client>> clients_;  // Вектор для хранения клиентов
+    boost::asio::io_context& io_context_;  // Контекст ввода/вывода
+    tcp::acceptor acceptor_;               // Акцептор для подключения клиентов
+    std::vector<Out_Client> clients_;      // Вектор клиентов (не указатели)
+    boost::asio::steady_timer cleanup_timer_;  // Таймер для очистки неподключенных клиентов
+    bool is_accepting_;  // Флаг для проверки состояния акцептора
 
 public:
-    // Конструктор, принимает порт и начинает слушать на этом порту
-    Server(short port) 
-        : acceptor_(io_context_, tcp::endpoint(tcp::v4(), port)) {}
-
-    // Метод для запуска сервера и начала прослушивания
-    void start() {
-        std::cout << "[INFO] Сервер запущен, ожидаем подключения клиентов...\n";
-        accept_connections();
-        io_context_.run();
+    Server(boost::asio::io_context& io_context, unsigned short port)
+        : io_context_(io_context),
+          acceptor_(io_context, tcp::endpoint(tcp::v4(), port)),
+          cleanup_timer_(io_context),
+          is_accepting_(false) {  // Изначально акцептор не запущен
+        std::cout << "[INFO] Инициализация сервера на порту " << port << std::endl;
     }
 
-private:
-    // Метод для ожидания подключения клиента
-    void accept_connections() {
-        auto socket = std::make_shared<tcp::socket>(io_context_);
-        acceptor_.async_accept(*socket, [this, socket](boost::system::error_code ec) {
-            if (!ec) {
-                // Клиент подключился, создаём объект Out_Client
-                std::cout << "[INFO] Новый клиент подключился!\n";
+    // Асинхронный прием новых подключений
+    void start_accept() {
+        if (is_accepting_) {
+            std::cout << "[INFO] Акцептор уже работает, новый запуск не требуется." << std::endl;
+            return;  // Если акцептор уже работает, не начинаем новый цикл
+        }
 
-                // Получаем логин клиента
-                std::string login = receive_login(*socket);
+        std::cout << "[INFO] Начало прослушивания на порту: " << acceptor_.local_endpoint().port() << std::endl;
+        is_accepting_ = true;  // Устанавливаем флаг, что акцептор теперь работает
 
-                // Создаём объект Out_Client для этого клиента
-                auto client = std::make_shared<Out_Client>(std::move(*socket), login);
+        // Создаем сокет для нового клиента
+        tcp::socket socket(io_context_);
 
-                // Добавляем клиента в вектор
-                clients_.push_back(client);
+        // Принять соединение с клиентом
+        acceptor_.async_accept(socket,
+            [this, socket = std::move(socket)](const boost::system::error_code& error) mutable {
+                if (!error) {
+                    // Новый клиент подключился, создаем объект Out_Client
+                    clients_.emplace_back(std::move(socket), "client_login");
+                    std::cout << "[INFO] Новый клиент подключился. Количество подключённых клиентов: " << clients_.size() << std::endl;
 
-                // Отправляем приветственное сообщение клиенту
-                client->send_message(Message("Привет, " + login + "!", "Server", login));
+                    // Запускаем асинхронное чтение сообщений от этого клиента
+                    start_read(clients_.back());  // Используем ссылку на последнего клиента
+                } else if (error == boost::asio::error::operation_aborted) {
+                    std::cout << "[INFO] Принятие соединения было прервано." << std::endl;
+                } else {
+                    std::cerr << "[ERROR] Ошибка при принятии соединения: " << error.message() << std::endl;
+                }
 
-                // После подключения продолжаем ожидать новых клиентов
-                accept_connections();
+                // После обработки текущего подключения, продолжаем принимать новые
+                start_accept();
+            });
+    }
+
+    // Асинхронное чтение сообщения от клиента
+    void start_read(Out_Client& client) {
+        client.async_receive_message([this, &client](const Message& message) {
+            if (client.is_connected()) {
+                // Обрабатываем полученное сообщение
+                std::cout << "[INFO] Получено сообщение от клиента: " << message.get_text() << std::endl;
+                
+                // Отправляем это сообщение всем клиентам
+                broadcast_message(message);
+                
+                // Снова запускаем асинхронное чтение для текущего клиента
+                start_read(client);
+            } else {
+                std::cout << "[INFO] Клиент отключился, удаляем из списка." << std::endl;
+                remove_client(client);
             }
         });
     }
 
-    // Метод для получения логина от клиента
-    std::string receive_login(tcp::socket& socket) {
-        try {
-            // Отправляем клиенту запрос на ввод логина
-            std::string request = "Введите ваш логин:";
-            boost::asio::write(socket, boost::asio::buffer(request));
-
-            // Читаем логин от клиента
-            char data[1024];
-            size_t length = socket.read_some(boost::asio::buffer(data));
-            std::string login(data, length);
-
-            // Убираем возможный символ новой строки
-            login.erase(std::remove(login.begin(), login.end(), '\n'), login.end());
-
-            return login;
-        } catch (const std::exception& e) {
-            std::cerr << "[ERROR] Ошибка при получении логина: " << e.what() << std::endl;
-            return "";
+    // Отправка сообщения всем подключённым клиентам
+    void broadcast_message(const Message& message) {
+        for (auto& client : clients_) {
+            if (client.is_connected()) {
+                client.send_raw_message(message);
+            }
         }
+    }
+
+    // Функция для удаления неподключенных клиентов
+    void remove_disconnected_clients() {
+        size_t before_cleanup = clients_.size();
+        clients_.erase(std::remove_if(clients_.begin(), clients_.end(),
+            [](Out_Client& client) { return !client.is_connected(); }), clients_.end());
+        size_t after_cleanup = clients_.size();
+        
+        std::cout << "[INFO] Очищены отключенные клиенты. Количество удалённых клиентов: " << (before_cleanup - after_cleanup) << std::endl;
+        std::cout << "[INFO] Осталось подключённых клиентов: " << after_cleanup << std::endl;
+    }
+
+    // Удаление клиента из вектора вручную
+    void remove_client(Out_Client& client) {
+        if (client.is_connected()) {
+            clients_.erase(std::remove(clients_.begin(), clients_.end(), client), clients_.end());
+            std::cout << "[INFO] Клиент удалён из списка. Количество подключённых клиентов: " << clients_.size() << std::endl;
+        }
+    }
+
+    // Таймер для регулярной очистки неподключенных клиентов
+    void start_cleanup_timer() {
+        cleanup_timer_.expires_from_now(boost::asio::chrono::seconds(5));  // 5 секунд
+        cleanup_timer_.async_wait([this](const boost::system::error_code&) {
+            remove_disconnected_clients();  // Очищаем неподключенных клиентов
+            start_cleanup_timer();  // Перезапускаем таймер
+        });
+    }
+
+    // Функция для начала прослушивания всех пользователей
+    void start_listening() {
+        std::cout << "[INFO] Запуск прослушивания всех пользователей..." << std::endl;
+        start_accept();  // Запускаем процесс приема подключений
+        start_cleanup_timer();  // Запускаем таймер для очистки клиентов
+    }
+
+    // Метод для запуска сервера
+    void run() {
+        std::cout << "[INFO] Запуск сервера..." << std::endl;
+        start_listening();  // Начинаем прослушивание всех пользователей
+        io_context_.run();
+    }
+
+    // Метод для отключения всех клиентов
+    void stop() {
+        for (auto& client : clients_) {
+            client.disconnect();
+        }
+        acceptor_.close();  // Закрываем акцептор
+        std::cout << "[INFO] Все клиенты отключены, акцептор закрыт." << std::endl;
     }
 };

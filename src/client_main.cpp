@@ -25,9 +25,9 @@ int main() {
     Out_Server my_server(io_context);
     my_server.connect_to_server(SERVER_ADDRESS, SERVER_PORT);
 
-    auto timer = boost::asio::steady_timer(io_context, boost::asio::chrono::seconds(2));
+    auto timer = boost::asio::steady_timer(io_context, boost::asio::chrono::seconds(5));
+    // my_server.close_connection();
+    // my_server.send_raw_message("Hui");
     timer.wait();
-    my_server.close_connection();
-
     return 0;
 }

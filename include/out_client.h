@@ -19,6 +19,11 @@ public:
     Out_Client(tcp::socket&& socket, const std::string& login)
         : login_(login), is_connected_(true), socket_(std::move(socket)) {}
 
+
+    bool operator==(const Out_Client& other) const {
+        return login_ == other.login_;  // Сравниваем по логину (или другому критерию)
+    }
+    
     // Геттеры
     const std::string& get_login() const {
         return login_;
