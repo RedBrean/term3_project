@@ -28,38 +28,27 @@ public:
         std::cout << "[INFO] Инициализация сервера на порту " << port << std::endl;
     }
 
-    // Асинхронный прием новых подключений
-    void start_accept() {
-        if (is_accepting_) {
-            std::cout << "[INFO] Акцептор уже работает, новый запуск не требуется." << std::endl;
-            return;  // Если акцептор уже работает, не начинаем новый цикл
-        }
-
+    // Синхронный прием нового подключения
+    void accept_connection() {
         std::cout << "[INFO] Начало прослушивания на порту: " << acceptor_.local_endpoint().port() << std::endl;
         is_accepting_ = true;  // Устанавливаем флаг, что акцептор теперь работает
 
         // Создаем сокет для нового клиента
         tcp::socket socket(io_context_);
 
-        // Принять соединение с клиентом
-        acceptor_.async_accept(socket,
-            [this, socket = std::move(socket)](const boost::system::error_code& error) mutable {
-                if (!error) {
-                    // Новый клиент подключился, создаем объект Out_Client
-                    clients_.emplace_back(std::move(socket), "client_login");
-                    std::cout << "[INFO] Новый клиент подключился. Количество подключённых клиентов: " << clients_.size() << std::endl;
+        try {
+            // Блокирует выполнение, пока не примет новое соединение
+            acceptor_.accept(socket);
 
-                    // Запускаем асинхронное чтение сообщений от этого клиента
-                    start_read(clients_.back());  // Используем ссылку на последнего клиента
-                } else if (error == boost::asio::error::operation_aborted) {
-                    std::cout << "[INFO] Принятие соединения было прервано." << std::endl;
-                } else {
-                    std::cerr << "[ERROR] Ошибка при принятии соединения: " << error.message() << std::endl;
-                }
+            // Новый клиент подключился, создаем объект Out_Client
+            clients_.emplace_back(std::move(socket), "client_login");
+            std::cout << "[INFO] Новый клиент подключился. Количество подключённых клиентов: " << clients_.size() << std::endl;
 
-                // После обработки текущего подключения, продолжаем принимать новые
-                start_accept();
-            });
+            // Запускаем асинхронное чтение сообщений от этого клиента
+            start_read(clients_.back());  // Используем ссылку на последнего клиента
+        } catch (const boost::system::system_error& e) {
+            std::cerr << "[ERROR] Ошибка при принятии соединения: " << e.what() << std::endl;
+        }
     }
 
     // Асинхронное чтение сообщения от клиента
@@ -67,7 +56,8 @@ public:
         client.async_receive_message([this, &client](const Message& message) {
             if (client.is_connected()) {
                 // Обрабатываем полученное сообщение
-                std::cout << "[INFO] Получено сообщение от клиента: " << message.get_text() << std::endl;
+                std::cout << "[INFO] Получено сообщение от клиента: " << std::endl;
+                std::cout << message.get_text() << std::endl;
                 
                 // Отправляем это сообщение всем клиентам
                 broadcast_message(message);
@@ -111,7 +101,7 @@ public:
 
     // Таймер для регулярной очистки неподключенных клиентов
     void start_cleanup_timer() {
-        cleanup_timer_.expires_from_now(boost::asio::chrono::seconds(5));  // 5 секунд
+        cleanup_timer_.expires_from_now(boost::asio::chrono::seconds(40));  // 40 секунд
         cleanup_timer_.async_wait([this](const boost::system::error_code&) {
             remove_disconnected_clients();  // Очищаем неподключенных клиентов
             start_cleanup_timer();  // Перезапускаем таймер
@@ -121,7 +111,7 @@ public:
     // Функция для начала прослушивания всех пользователей
     void start_listening() {
         std::cout << "[INFO] Запуск прослушивания всех пользователей..." << std::endl;
-        start_accept();  // Запускаем процесс приема подключений
+        accept_connection();  // Запускаем синхронный прием подключений
         start_cleanup_timer();  // Запускаем таймер для очистки клиентов
     }
 

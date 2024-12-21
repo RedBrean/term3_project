@@ -28,6 +28,13 @@ int main() {
     auto timer = boost::asio::steady_timer(io_context, boost::asio::chrono::seconds(5));
     // my_server.close_connection();
     // my_server.send_raw_message("Hui");
+
+    while(true)
+    {
+        std::string message;
+        std::cin >> message;
+        my_server.send_raw_message(message);
+    }
     timer.wait();
     return 0;
 }
