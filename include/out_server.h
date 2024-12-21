@@ -3,10 +3,11 @@
 #include <iostream>
 #include <boost/asio.hpp>
 #include <string>
+#include <functional>  // Для использования std::function
+
 using boost::asio::ip::tcp;
 
-class Out_Server
-{
+class Out_Server {
 private:
     tcp::socket socket;  // Сокет как член класса
 
@@ -47,14 +48,17 @@ public:
     // Метод для асинхронного получения сообщения от сервера
     void async_receive_message(std::function<void(const std::string&)> handler) {
         try {
+            // Используем streambuf для асинхронного чтения
             boost::asio::streambuf buffer;
+            
+            // Читаем данные до символа новой строки
             boost::asio::async_read_until(socket, buffer, '\n', 
                 [this, handler, &buffer](const boost::system::error_code& error, std::size_t bytes_transferred) {
                     if (!error) {
                         std::istream input(&buffer);
                         std::string response;
                         std::getline(input, response);
-                        handler(response);
+                        handler(response);  // Вызываем обработчик с полученным сообщением
                     } else {
                         std::cerr << "[ERROR] Ошибка при получении сообщения: " << error.message() << std::endl;
                     }

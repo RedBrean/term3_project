@@ -1,12 +1,10 @@
 #pragma once
 
-
-#include <message.h>
-
-
-
+#include <iostream>
 #include <boost/asio.hpp>
 #include <string>
+#include <functional>  // Для использования std::function
+#include <message.h>   // Предполагаем, что этот заголовочный файл существует
 
 using boost::asio::ip::tcp;
 
@@ -41,29 +39,48 @@ public:
             is_connected_ = false;
         }
     }
+
     // Метод для отправки сообщения
-void send_message(const Message& message) {
-    if (is_connected_) {
-        std::string message_str = message.to_string();  // Получаем строковое представление сообщения
-        boost::asio::write(socket_, boost::asio::buffer(message_str));  // Отправляем сообщение через сокет
-        std::cout << "[INFO] Сообщение отправлено: " << message.get_text() << std::endl;
-    } else {
-        std::cerr << "[ERROR] Клиент не подключён!" << std::endl;
+    void send_raw_message(const Message& message) {
+        if (is_connected_) {
+            try {
+                std::string message_str = message.to_string();  // Получаем строковое представление сообщения
+                boost::asio::write(socket_, boost::asio::buffer(message_str));  // Отправляем сообщение через сокет
+                std::cout << "[INFO] Сообщение отправлено: " << message.get_text() << std::endl;
+            } catch (const std::exception& e) {
+                std::cerr << "[ERROR] Ошибка при отправке сообщения: " << e.what() << std::endl;
+            }
+        } else {
+            std::cerr << "[ERROR] Клиент не подключён!" << std::endl;
+        }
     }
-}
 
-// Метод для получения сообщения
-Message receive_message() {
-    if (is_connected_) {
-        char data[1024];
-        size_t length = socket_.read_some(boost::asio::buffer(data));  // Чтение данных из сокета
-        std::string received_message(data, length);  // Преобразуем полученные данные в строку
-        std::cout << "[INFO] Сообщение получено: " << received_message << std::endl;
-        return Message::from_string(received_message);  // Создаём объект Message из строки
-    } else {
-        std::cerr << "[ERROR] Клиент не подключён!" << std::endl;
-        return Message();  // Возвращаем пустое сообщение, если клиент не подключён
+    // Метод для асинхронного получения сообщения от сервера
+    void async_receive_message(std::function<void(const Message&)> handler) {
+        if (is_connected_) {
+            try {
+                // Используем streambuf для асинхронного чтения
+                boost::asio::streambuf buffer;
+
+                // Читаем данные до символа новой строки
+                boost::asio::async_read_until(socket_, buffer, '\n',
+                    [this, handler, &buffer](const boost::system::error_code& error, std::size_t bytes_transferred) {
+                        if (!error) {
+                            std::istream input(&buffer);
+                            std::string received_message;
+                            std::getline(input, received_message);
+                            Message message = Message::from_string(received_message); // Создаем объект Message
+                            handler(message);  // Вызываем обработчик с полученным сообщением
+                        } else {
+                            std::cerr << "[ERROR] Ошибка при получении сообщения: " << error.message() << std::endl;
+                        }
+                    });
+            } catch (const std::exception& e) {
+                std::cerr << "[ERROR] Ошибка при настройке асинхронного получения: " << e.what() << std::endl;
+            }
+        } else {
+            std::cerr << "[ERROR] Клиент не подключён!" << std::endl;
+        }
     }
-}
 
-};
+};  // Класс завершен

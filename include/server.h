@@ -9,7 +9,7 @@
 #include <string>
 #include <iostream>
 #include <memory>
-#include "Out_Client.h"  // Включаем ваш класс Out_Client
+#include "out_client.h"  // Включаем ваш класс Out_Client
 
 using boost::asio::ip::tcp;
 
