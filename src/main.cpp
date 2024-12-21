@@ -1,6 +1,7 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <fstream>
+#include <include/message.h>
 
 using json = nlohmann::json;
 
