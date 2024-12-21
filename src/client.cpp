@@ -10,9 +10,9 @@ int main() {
     // Создаем сокет для подключения к серверу
     tcp::socket socket(io_context);
 
-    // Подключаемся к серверу по адресу localhost (127.0.0.1) и порту 12345
+    // Подключаемся к серверу по его IP-адресу и порту
     tcp::resolver resolver(io_context);
-    boost::asio::connect(socket, resolver.resolve("127.0.0.1", "12345"));
+    boost::asio::connect(socket, resolver.resolve("172.26.53.150", "12345"));  // Используем IP сервера
 
     std::string message = "Привет, мир!";
 
