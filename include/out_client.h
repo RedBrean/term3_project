@@ -3,8 +3,6 @@
 #include <iostream>
 #include <boost/asio.hpp>
 #include <string>
-#include <functional>  // Для использования std::function
-#include <message.h>   // Предполагаем, что этот заголовочный файл существует
 
 using boost::asio::ip::tcp;
 
@@ -19,11 +17,11 @@ public:
     Out_Client(tcp::socket&& socket, const std::string& login)
         : login_(login), is_connected_(true), socket_(std::move(socket)) {}
 
-
+    // Оператор сравнения клиентов по логину
     bool operator==(const Out_Client& other) const {
-        return login_ == other.login_;  // Сравниваем по логину (или другому критерию)
+        return login_ == other.login_;  // Сравниваем по логину
     }
-    
+
     // Геттеры
     const std::string& get_login() const {
         return login_;
@@ -45,13 +43,12 @@ public:
         }
     }
 
-    // Метод для отправки сообщения
-    void send_raw_message(const Message& message) {
+    // Метод для синхронного отправления сообщения
+    void send_raw_message(const std::string& message) {
         if (is_connected_) {
             try {
-                std::string message_str = message.to_string();  // Получаем строковое представление сообщения
-                boost::asio::write(socket_, boost::asio::buffer(message_str));  // Отправляем сообщение через сокет
-                std::cout << "[INFO] Сообщение отправлено: " << message.get_text() << std::endl;
+                boost::asio::write(socket_, boost::asio::buffer(message + "\n"));  // Отправляем сообщение через сокет
+                std::cout << "[INFO] Сообщение отправлено: " << message << std::endl;
             } catch (const std::exception& e) {
                 std::cerr << "[ERROR] Ошибка при отправке сообщения: " << e.what() << std::endl;
             }
@@ -60,32 +57,28 @@ public:
         }
     }
 
-    // Метод для асинхронного получения сообщения от сервера
-    void async_receive_message(std::function<void(const Message&)> handler) {
+    // Метод для синхронного получения сообщения от сервера
+    std::string receive_raw_message() {
         if (is_connected_) {
             try {
-                // Используем streambuf для асинхронного чтения
+                // Создаем буфер для хранения полученных данных
                 boost::asio::streambuf buffer;
+                std::string received_message;
 
-                // Читаем данные до символа новой строки
-                boost::asio::async_read_until(socket_, buffer, '\n',
-                    [this, handler, &buffer](const boost::system::error_code& error, std::size_t bytes_transferred) {
-                        if (!error) {
-                            std::istream input(&buffer);
-                            std::string received_message;
-                            std::getline(input, received_message);
-                            Message message = Message::from_string(received_message); // Создаем объект Message
-                            handler(message);  // Вызываем обработчик с полученным сообщением
-                        } else {
-                            std::cerr << "[ERROR] Ошибка при получении сообщения: " << error.message() << std::endl;
-                        }
-                    });
-            } catch (const std::exception& e) {
-                std::cerr << "[ERROR] Ошибка при настройке асинхронного получения: " << e.what() << std::endl;
+                // Читаем данные из сокета (предполагаем, что данные заканчиваются символом новой строки)
+                boost::asio::read(socket_, buffer, boost::asio::transfer_at_least(1));  // Читаем хотя бы один байт
+
+                // Извлекаем строку из буфера
+                std::istream input(&buffer);
+                std::getline(input, received_message);
+
+                return received_message;  // Возвращаем полученную строку
+            } catch (const boost::system::system_error& e) {
+                std::cerr << "[ERROR] Ошибка при получении сообщения: " << e.what() << std::endl;
+                disconnect();  // Отключаем клиента при ошибке
             }
-        } else {
-            std::cerr << "[ERROR] Клиент не подключён!" << std::endl;
         }
+        return "";  // Если клиент не подключен или произошла ошибка
     }
 
-};  // Класс завершен
+};
