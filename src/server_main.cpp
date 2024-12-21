@@ -19,7 +19,7 @@ int main() {
     std::cout << "Client connected!" << std::endl;
 
     // Буфер для приема данных
-    char data[512];
+    char data[1024];
     boost::system::error_code error;
 
     // Чтение данных от клиента
