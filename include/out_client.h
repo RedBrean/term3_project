@@ -75,7 +75,7 @@ public:
 
         try {
             boost::asio::streambuf buffer;
-            boost::asio::read_until(*socket_, buffer, "|EE");  // Читаем данные до символа конца строки
+            boost::asio::read_until(*socket_, buffer, "||E");  // Читаем данные до символа конца строки
 
             std::istream stream(&buffer);
             std::string message;
