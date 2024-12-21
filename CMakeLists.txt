@@ -16,10 +16,6 @@ include_directories(${Boost_INCLUDE_DIRS})
 include_directories(include)
 include_directories(src)
 
-# Добавляем библиотеку myLib
-add_library(myLib STATIC include/server_client.h)  # Объединяем общую логику в shared.cpp
-
-target_link_libraries(myLib ${Boost_LIBRARIES})
 
 # Добавляем исполняемый файл DIA
 add_executable(DIA src/main.cpp)
