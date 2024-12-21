@@ -35,9 +35,12 @@ public:
             // Получаем логин клиента (для примера, создаём логин на основе номера подключения)
             std::string login = "Client_" + std::to_string(clients_.size() + 1);
 
-            // Создаём объект клиента и добавляем в список
+
             Out_Client new_client(std::move(socket), login);
-            clients_.push_back(std::move(new_client));
+
+
+
+            clients_.push_back(new_client);
 
             // Обрабатываем сообщения от клиента в отдельном потоке
             std::thread([this, &new_client]() {
@@ -48,14 +51,20 @@ public:
 
     // Метод для обработки сообщений от клиента
     void process_client_messages(Out_Client& client) {
-        while (client.is_connected()) {
-            std::string message = client.receive_raw_message();  // Получаем сообщение от клиента
-            if (!message.empty()) {
-                std::cout << "[INFO] Получено сообщение от клиента " << client.get_login() << ": " << message << std::endl;
-            } else {
-                std::cout << "[INFO] Клиент " << client.get_login() << " отключён." << std::endl;
-                break;
+        try {
+            while (client.is_connected()) {
+                std::string message = client.receive_raw_message();
+                if (!message.empty()) {
+                    std::cout << "[INFO] Получено сообщение от клиента " << client.get_login() << ": " << message << std::endl;
+                } else {
+                    std::cout << "[INFO] Клиент " << client.get_login() << " отключён." << std::endl;
+                    client.disconnect();
+                    break;
+                }
             }
+        } catch (const std::exception& e) {
+            std::cerr << "[ERROR] Исключение в обработке клиента: " << e.what() << std::endl;
+            client.disconnect();
         }
     }
 
