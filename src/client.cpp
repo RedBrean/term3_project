@@ -2,9 +2,30 @@
 #include <iostream>
 #include <string>
 
+#include <fstream>
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
+
 using boost::asio::ip::tcp;
 
+std::string SERVER_ADDRESS;
+std::string SERVER_PORT;
+
+
+void read_settings()
+{
+    std::ifstream file("../settings.json");
+    json settings;
+    file >> settings;
+
+    SERVER_ADDRESS = settings["server_address"];
+    SERVER_PORT = settings["server_port"];
+}
+
 int main() {
+    read_settings();
+
     boost::asio::io_context io_context;
 
     // Создаем сокет для подключения к серверу
@@ -12,9 +33,11 @@ int main() {
 
     // Подключаемся к серверу по его IP-адресу и порту
     tcp::resolver resolver(io_context);
-    std::string ip = "127.0.0.1";
-    std::cout << ip << std::endl;
-    boost::asio::connect(socket, resolver.resolve(ip, "12345"));  // IP сервера
+
+    std::cout << "try" << SERVER_ADDRESS << ":" << SERVER_PORT << std::endl;
+
+
+    boost::asio::connect(socket, resolver.resolve(SERVER_ADDRESS, SERVER_PORT));  // IP сервера
 
     std::string message = "Привет, мир!";
 
